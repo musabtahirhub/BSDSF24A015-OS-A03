@@ -27,6 +27,7 @@ int execute(char** arglist, int background);
 void reap_jobs(void);
 void print_jobs(void);
 int handle_builtin(char** arglist);
+void expand_vars(char** arglist);
 void add_to_history(const char* cmd);
 char* get_history(int n);
 

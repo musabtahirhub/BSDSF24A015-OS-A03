@@ -105,8 +105,63 @@ static void print_history(void) {
         printf("%d  %s\n", i + 1, history[i % HISTORY_SIZE]);
 }
 
+// Shell variables: a simple linked list of NAME=value pairs.
+struct var {
+    char* name;
+    char* value;
+    struct var* next;
+};
+static struct var* vars = NULL;
+
+static void set_var(const char* name, const char* value) {
+    for (struct var* v = vars; v != NULL; v = v->next) {
+        if (strcmp(v->name, name) == 0) {      // re-assignment
+            free(v->value);
+            v->value = strdup(value);
+            return;
+        }
+    }
+    struct var* v = malloc(sizeof(struct var));
+    v->name = strdup(name);
+    v->value = strdup(value);
+    v->next = vars;
+    vars = v;
+}
+
+static char* get_var(const char* name) {
+    for (struct var* v = vars; v != NULL; v = v->next)
+        if (strcmp(v->name, name) == 0)
+            return v->value;
+    return NULL;
+}
+
+// Replaces every word that starts with $ by the variable's value ("" if unset).
+void expand_vars(char** arglist) {
+    for (int i = 0; arglist[i] != NULL; i++) {
+        if (arglist[i][0] != '$' || arglist[i][1] == '\0')
+            continue;
+        char* value = get_var(arglist[i] + 1);
+        if (value == NULL)
+            value = getenv(arglist[i] + 1);    // fall back to the environment, e.g. $HOME
+        free(arglist[i]);                      // old "$NAME" string
+        arglist[i] = strdup(value ? value : "");
+    }
+}
+
 // Returns 1 if arglist[0] was a built-in (and runs it), 0 otherwise.
 int handle_builtin(char** arglist) {
+    // NAME=value (a single word containing '=') is an assignment, not a command
+    char* eq = strchr(arglist[0], '=');
+    if (eq != NULL && eq != arglist[0] && arglist[1] == NULL) {
+        *eq = '\0';
+        set_var(arglist[0], eq + 1);
+        return 1;
+    }
+    if (strcmp(arglist[0], "set") == 0) {
+        for (struct var* v = vars; v != NULL; v = v->next)
+            printf("%s=%s\n", v->name, v->value);
+        return 1;
+    }
     if (strcmp(arglist[0], "exit") == 0) {
         exit(0);
     }

@@ -6,6 +6,7 @@ static int run_command(char* cmd) {
     char** arglist = tokenize(cmd);
     if (arglist == NULL)
         return 0;
+    expand_vars(arglist);   // $NAME -> value, before anything runs
 
     int n = 0;
     while (arglist[n] != NULL) n++;
