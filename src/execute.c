@@ -1,5 +1,42 @@
 #include "shell.h"
 
+// Background jobs: a slot is free when its pid is 0.
+static pid_t job_pid[MAX_JOBS];
+static char* job_cmd[MAX_JOBS];
+
+static void add_job(pid_t pid, const char* cmd) {
+    for (int i = 0; i < MAX_JOBS; i++) {
+        if (job_pid[i] == 0) {
+            job_pid[i] = pid;
+            job_cmd[i] = strdup(cmd);
+            printf("[%d] %d\n", i + 1, pid);
+            return;
+        }
+    }
+    fprintf(stderr, "too many background jobs, not tracking pid %d\n", pid);
+}
+
+// Non-blocking: reaps every finished child (no zombies) and drops it from the job list.
+void reap_jobs(void) {
+    int status;
+    pid_t pid;
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+        for (int i = 0; i < MAX_JOBS; i++) {
+            if (job_pid[i] == pid) {
+                printf("[%d] Done    %s\n", i + 1, job_cmd[i]);
+                free(job_cmd[i]);
+                job_pid[i] = 0;
+            }
+        }
+    }
+}
+
+void print_jobs(void) {
+    for (int i = 0; i < MAX_JOBS; i++)
+        if (job_pid[i] != 0)
+            printf("[%d] %d  Running  %s\n", i + 1, job_pid[i], job_cmd[i]);
+}
+
 // Runs in the CHILD: applies < and > redirections, then execs the command.
 // Never returns.
 static void run_child(char** args) {
@@ -37,8 +74,8 @@ static void run_child(char** args) {
 }
 
 // Runs "cmd1 | cmd2 | ..." (each part may have < and >).
-// Returns the exit status of the last command.
-int execute(char* arglist[]) {
+// Returns the exit status of the last command (0 for background jobs).
+int execute(char* arglist[], int background) {
     // Work on a copy so we can cut it at each "|" without touching the caller's list.
     char* args[MAXARGS + 1];
     char** cmds[MAXARGS];
@@ -92,6 +129,11 @@ int execute(char* arglist[]) {
             close(fd[1]);
             prev_read = fd[0];
         }
+    }
+
+    if (background) {             // don't wait; reap_jobs() collects it later
+        add_job(pids[ncmds - 1], arglist[0]);
+        return 0;
     }
 
     int status = 0;
