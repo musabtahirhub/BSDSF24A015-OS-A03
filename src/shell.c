@@ -124,6 +124,7 @@ int handle_builtin(char** arglist) {
         printf("  history    show command history\n");
         printf("  jobs       list background jobs\n");
         printf("  !n         re-run command number n\n");
+        printf("Operators: < > | ; & (at end = background)\n");
         return 1;
     }
     if (strcmp(arglist[0], "history") == 0) {
@@ -131,7 +132,7 @@ int handle_builtin(char** arglist) {
         return 1;
     }
     if (strcmp(arglist[0], "jobs") == 0) {
-        printf("Job control not yet implemented.\n");
+        print_jobs();
         return 1;
     }
     return 0;
