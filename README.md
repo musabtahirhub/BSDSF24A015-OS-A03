@@ -4,6 +4,13 @@ A simple command-line interpreter (shell) built in C for an Operating Systems co
 
 ## Quick Start
 
+### Requirements
+
+GNU Readline development files:
+```bash
+sudo apt install libreadline-dev
+```
+
 ### Build the Shell
 
 To compile the project, run the `make` command:
@@ -32,3 +39,15 @@ make clean
 *   `/bin`: Contains the final compiled executable (`myshell`).
 *   `/obj`: Contains intermediate object files (`.o`) created during compilation.
 *   `Makefile`: The build script for the project.
+## Features
+
+| Tag | Feature |
+|-----|---------|
+| v1.0-base | Base shell (fork-exec-wait) |
+| v2 | Built-ins: `cd`, `exit`, `help`, `jobs` |
+| v3 | `history` (last 20) and `!n` re-execution |
+| v4 | GNU Readline: line editing, up/down history, Tab completion |
+| v5 | I/O redirection `<` `>` and pipes `|` |
+| v6 | Chaining `;`, background `&`, `jobs`, zombie reaping |
+| v7 | `if ... then ... else ... fi` |
+| v8 | Variables `NAME=value`, `$NAME` expansion, `set` |
