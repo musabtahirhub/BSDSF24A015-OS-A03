@@ -1,22 +1,45 @@
 #include "shell.h"
 
-char* read_cmd(char* prompt, FILE* fp) {
-    printf("%s", prompt);
-    char* cmdline = (char*) malloc(sizeof(char) * MAX_LEN);
-    int c, pos = 0;
+// Tab completion for the first word: executables found in $PATH.
+// Readline calls this repeatedly (state 0 = first call) until it returns NULL.
+static char* command_generator(const char* text, int state) {
+    static char* path_copy = NULL;
+    static char* dir;
+    static char* save;
+    static DIR* dp;
+    struct dirent* entry;
 
-    while ((c = getc(fp)) != EOF) {
-        if (c == '\n') break;
-        cmdline[pos++] = c;
+    if (state == 0) {
+        free(path_copy);
+        path_copy = strdup(getenv("PATH") ? getenv("PATH") : "");
+        dir = strtok_r(path_copy, ":", &save);
+        dp = NULL;
     }
+    while (dir != NULL) {
+        if (dp == NULL)
+            dp = opendir(dir);
+        if (dp != NULL) {
+            while ((entry = readdir(dp)) != NULL)
+                if (strncmp(entry->d_name, text, strlen(text)) == 0)
+                    return strdup(entry->d_name);   // readline frees it
+            closedir(dp);
+            dp = NULL;
+        }
+        dir = strtok_r(NULL, ":", &save);
+    }
+    return NULL;
+}
 
-    if (c == EOF && pos == 0) {
-        free(cmdline);
-        return NULL; // Handle Ctrl+D
-    }
-    
-    cmdline[pos] = '\0';
-    return cmdline;
+// First word -> command names; otherwise (or no command matched) readline's
+// default filename completion is used because we return NULL.
+static char** shell_completion(const char* text, int start, int end) {
+    if (start == 0)
+        return rl_completion_matches(text, command_generator);
+    return NULL;
+}
+
+void init_readline(void) {
+    rl_attempted_completion_function = shell_completion;
 }
 
 char** tokenize(char* cmdline) {
