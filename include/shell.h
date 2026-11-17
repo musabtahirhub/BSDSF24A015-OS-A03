@@ -17,6 +17,7 @@
 #define PROMPT "FCIT> "
 #define SPECIAL_CHARS "<>|&"  // characters that form their own token
 #define MAX_JOBS 32
+#define MAX_BLOCK 32          // max lines in a then/else block
 #define HISTORY_SIZE 20
 
 // Function prototypes
