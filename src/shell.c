@@ -42,40 +42,37 @@ void init_readline(void) {
     rl_attempted_completion_function = shell_completion;
 }
 
+// Splits a line into words. The operators < > | are always separate tokens
+// (so "ls>out" works too). Text inside "double quotes" is one word, quotes removed.
 char** tokenize(char* cmdline) {
-    // Edge case: empty command line
-    if (cmdline == NULL || cmdline[0] == '\0' || cmdline[0] == '\n') {
+    if (cmdline == NULL)
         return NULL;
-    }
 
-    char** arglist = (char**)malloc(sizeof(char*) * (MAXARGS + 1));
-    for (int i = 0; i < MAXARGS + 1; i++) {
-        arglist[i] = (char*)malloc(sizeof(char) * ARGLEN);
-        bzero(arglist[i], ARGLEN);
-    }
-
+    char** arglist = malloc(sizeof(char*) * (MAXARGS + 1));
     char* cp = cmdline;
-    char* start;
-    int len;
     int argnum = 0;
 
     while (*cp != '\0' && argnum < MAXARGS) {
         while (*cp == ' ' || *cp == '\t') cp++; // Skip leading whitespace
-        
-        if (*cp == '\0') break; // Line was only whitespace
+        if (*cp == '\0') break;                  // Line was only whitespace
 
-        start = cp;
-        len = 1;
-        while (*++cp != '\0' && !(*cp == ' ' || *cp == '\t')) {
-            len++;
+        char* tok = malloc(strlen(cp) + 1);      // a token is never longer than the rest of the line
+        int len = 0;
+        if (strchr(SPECIAL_CHARS, *cp)) {
+            tok[len++] = *cp++;                  // operator token
+        } else {
+            int in_quotes = 0;
+            while (*cp != '\0' && (in_quotes || !strchr(" \t" SPECIAL_CHARS, *cp))) {
+                if (*cp == '"') in_quotes = !in_quotes;
+                else tok[len++] = *cp;
+                cp++;
+            }
         }
-        strncpy(arglist[argnum], start, len);
-        arglist[argnum][len] = '\0';
-        argnum++;
+        tok[len] = '\0';
+        arglist[argnum++] = tok;
     }
 
     if (argnum == 0) { // No arguments were parsed
-        for(int i = 0; i < MAXARGS + 1; i++) free(arglist[i]);
         free(arglist);
         return NULL;
     }
