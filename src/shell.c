@@ -61,6 +61,30 @@ char** tokenize(char* cmdline) {
     return arglist;
 }
 
+// Circular buffer: command number n (1-based) lives in history[(n-1) % HISTORY_SIZE].
+static char* history[HISTORY_SIZE];
+static int hist_count = 0;   // total commands ever added
+
+void add_to_history(const char* cmd) {
+    int idx = hist_count % HISTORY_SIZE;
+    free(history[idx]);          // overwrite the oldest when full
+    history[idx] = strdup(cmd);
+    hist_count++;
+}
+
+// Returns command number n, or NULL if it is out of range / already overwritten.
+char* get_history(int n) {
+    if (n < 1 || n > hist_count || n <= hist_count - HISTORY_SIZE)
+        return NULL;
+    return history[(n - 1) % HISTORY_SIZE];
+}
+
+static void print_history(void) {
+    int start = hist_count > HISTORY_SIZE ? hist_count - HISTORY_SIZE : 0;
+    for (int i = start; i < hist_count; i++)
+        printf("%d  %s\n", i + 1, history[i % HISTORY_SIZE]);
+}
+
 // Returns 1 if arglist[0] was a built-in (and runs it), 0 otherwise.
 int handle_builtin(char** arglist) {
     if (strcmp(arglist[0], "exit") == 0) {
@@ -77,7 +101,13 @@ int handle_builtin(char** arglist) {
         printf("  cd <dir>   change directory\n");
         printf("  exit       exit the shell\n");
         printf("  help       show this help\n");
+        printf("  history    show command history\n");
         printf("  jobs       list background jobs\n");
+        printf("  !n         re-run command number n\n");
+        return 1;
+    }
+    if (strcmp(arglist[0], "history") == 0) {
+        print_history();
         return 1;
     }
     if (strcmp(arglist[0], "jobs") == 0) {
